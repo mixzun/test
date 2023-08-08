@@ -1,0 +1,46 @@
+import datetime
+import time
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
+# Function to handle the /start command
+def start(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Hi! I'm an event notification bot. To set the event time, send /seteventtime HH:MM.")
+
+# Function to handle the /set command
+def set_event_time(update, context):
+    event_time = context.args[0] # Get the event time from the command arguments
+    context.user_data['event_time'] = event_time # Save the event time in the user's context
+    context.bot.send_message(chat_id=update.effective_chat.id, text=f"Event time set to {event_time}.")
+
+# Function to send the event notification
+def send_event_notification(context):
+    event_time = context.user_data['event_time']
+    current_time = datetime.datetime.now().strftime("%H:%M")
+
+    if current_time == event_time:
+        context.bot.send_message(chat_id=context.job.context, text="Your event has occurred!")
+
+# Function to handle any user messages
+def echo(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="I'm sorry, I don't understand that command. Please try again.")
+
+def main():
+    # Initialize the bot
+    updater = Updater(token='YOUR_TELEGRAM_BOT_TOKEN', use_context=True)
+    dispatcher = updater.dispatcher
+
+    # Assign command and message handlers
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("seteventtime", set_event_time))
+    dispatcher.add_handler(MessageHandler(Filters.text, echo))
+
+    # Start sending event notifications every minute
+    job_queue = updater.job_queue
+    job_minute = job_queue.run_repeating(send_event_notification, interval=60, first=0, context=dispatcher)
+
+    # Start the bot
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
